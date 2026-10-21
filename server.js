@@ -69,7 +69,7 @@ function verifyCallback(req) {
  const seconds=Number(timestamp.length>10?Math.floor(Number(timestamp)/1000):Number(timestamp));
  if(!Number.isFinite(seconds)||Math.abs(Math.floor(Date.now()/1000)-seconds)>300)
   return {ok:false,status:401,code:"CALLBACK_TIMESTAMP_EXPIRED",message:"Timestamp do callback fora da janela de 5 minutos."};
- const canonical=["POST",req.path,timestamp,nonce,idem,crypto.createHash("sha256").update(canonicalJson(req.body||{})).digest("hex")].join("\\n");
+ const canonical=["POST",req.path,timestamp,nonce,idem,crypto.createHash("sha256").update(canonicalJson(req.body||{})).digest("hex")].join("\n");
  const expected=crypto.createHmac("sha256",CALLBACK_SECRET).update(canonical).digest("hex");
  if(!crypto.timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(signature.toLowerCase(),"hex")))
   return {ok:false,status:401,code:"INVALID_CALLBACK_SIGNATURE",message:"Assinatura HMAC do callback inválida."};
@@ -143,7 +143,7 @@ app.post("/api/proxy",async(req,res)=>{
  const canonical=[verb,target.pathname,timestamp,nonce,crypto.createHash("sha256").update(bodyText).digest("hex")].join("\\n");
  const signature=crypto.createHmac("sha256",operatorSecret).update(canonical).digest("hex");
  const headers={"Accept":"application/json","X-Operator-Key":operatorKey,"X-1Q-Timestamp":timestamp,"X-1Q-Nonce":nonce,"X-1Q-Signature":signature};
- const isLaunch=verb==="POST" && target.pathname.replace(/\\/+$/, "")==="/api/v1/launches";
+ const isLaunch=verb==="POST" && target.pathname.replace(/\/+$/, "")==="/api/v1/launches";
  const idempotencyKey=isLaunch ? (String(req.body?.idempotencyKey||"").trim() || crypto.randomUUID()) : "";
  if(isLaunch)headers["Idempotency-Key"]=idempotencyKey;
  if(bodyText)headers["Content-Type"]="application/json";
