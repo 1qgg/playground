@@ -29,7 +29,13 @@ function sortDeep(value) {
   if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(k => [k, sortDeep(value[k])]));
   return value;
 }
-function canonicalJson(value) { return JSON.stringify(sortDeep(value)); }
+function canonicalJson(value) {
+  // Match PHP json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES):
+  // recursively sorted keys, unescaped slashes, but non-ASCII code units escaped.
+  return JSON.stringify(sortDeep(value)).replace(/[\\u007f-\\uffff]/g, ch =>
+    "\\u" + ch.charCodeAt(0).toString(16).padStart(4, "0")
+  );
+}
 function safeHeaders(headers) {
   const blocked = new Set(["authorization", "cookie", "set-cookie", "x-1q-signature"]);
   return Object.fromEntries(Object.entries(headers).filter(([k]) => !blocked.has(k.toLowerCase())));
@@ -158,9 +164,15 @@ app.post("/callbacks/1q", (req, res) => {
   if (!verified.ok) return errorResponse(req, res, operatorKey, verified.status, verified.code, verified.message);
   const payload = req.body || {};
   const rawType = String(payload.type || payload.operation || payload.transaction?.type || payload.transaction?.operation || "").toUpperCase().replace(/[\s_-]/g, "");
-  const typeAliases = { WINBET: "WINBET", WIN_BET: "WINBET", BALANCE_CHECK: "BALANCE", GET_BALANCE: "BALANCE", DEBIT: "BET", CREDIT: "WIN" };
+  const typeAliases = {
+    BALANCE: "BALANCE", BALANCECHECK: "BALANCE", GETBALANCE: "BALANCE",
+    DEBIT: "BET", BET: "BET",
+    CREDIT: "WIN", WIN: "WIN",
+    REFUND: "REFUND",
+    TRANSACTION: "WINBET", WINBET: "WINBET", WIN_BET: "WINBET"
+  };
   const type = typeAliases[rawType] || rawType;
-  const user = String(payload.user_code || "");
+  const user = String(payload.user_code || payload.player?.user_code || payload.player?.code || "");
   const transaction = payload.transaction && typeof payload.transaction === "object" ? payload.transaction : {};
   const slot = payload.slot && typeof payload.slot === "object" ? payload.slot : {};
   const currency = String(payload.currency || transaction.currency || slot.currency || "").toUpperCase();
