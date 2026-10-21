@@ -163,7 +163,7 @@ app.post("/callbacks/1q", (req, res) => {
   const verified = verifyCallback(req, operatorKey);
   if (!verified.ok) return errorResponse(req, res, operatorKey, verified.status, verified.code, verified.message);
   const payload = req.body || {};
-  const rawType = String(payload.type || payload.operation || payload.transaction?.type || payload.transaction?.operation || "").toUpperCase().replace(/[\s_-]/g, "");
+  const rawType = String(payload.operation || payload.type || payload.transaction?.operation || payload.transaction?.type || "").toUpperCase().replace(/[\s_-]/g, "");
   const typeAliases = {
     BALANCE: "BALANCE", BALANCECHECK: "BALANCE", GETBALANCE: "BALANCE",
     DEBIT: "BET", BET: "BET",
