@@ -32,7 +32,7 @@ function sortDeep(value) {
 function canonicalJson(value) {
   // Match PHP json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES):
   // recursively sorted keys, unescaped slashes, but non-ASCII code units escaped.
-  return JSON.stringify(sortDeep(value)).replace(/[\\u007f-\\uffff]/g, ch =>
+  return JSON.stringify(sortDeep(value)).replace(/[\u007f-\uffff]/g, ch =>
     "\\u" + ch.charCodeAt(0).toString(16).padStart(4, "0")
   );
 }
