@@ -34,7 +34,7 @@ function addEvent(req, {status, operation, player, currency, amount, balanceBefo
 }
 function parseAmount(value) {
  const s=String(value??"");
- if(!/^(0|[1-9]\\d*)(?:\\.\\d{1,4})?$/.test(s)) return null;
+ if(!/^(0|[1-9]\d*)(?:\.\d{1,4})?$/.test(s)) return null;
  const [whole,frac=""]=s.split(".");
  const units=BigInt(whole)*10000n+BigInt((frac+"0000").slice(0,4));
  return units;
@@ -64,7 +64,7 @@ function verifyCallback(req) {
  const idem=String(req.get("X-1Q-Idempotency-Key")||"");
  const signature=String(req.get("X-1Q-Signature")||"");
  if(key!==CALLBACK_KEY) return {ok:false,status:401,code:"INVALID_CALLBACK_KEY",message:"X-1Q-Key não corresponde ao projeto configurado."};
- if(!/^\\d{10,13}$/.test(timestamp)||!nonce||nonce.length>128||!idem||idem.length>128||! /^[a-f0-9]{64}$/i.test(signature))
+ if(!/^\d{10,13}$/.test(timestamp)||!nonce||nonce.length>128||!idem||idem.length>128||! /^[a-f0-9]{64}$/i.test(signature))
   return {ok:false,status:401,code:"INVALID_CALLBACK_HEADERS",message:"Cabeçalhos de assinatura ou idempotência ausentes/inválidos."};
  const seconds=Number(timestamp.length>10?Math.floor(Number(timestamp)/1000):Number(timestamp));
  if(!Number.isFinite(seconds)||Math.abs(Math.floor(Date.now()/1000)-seconds)>300)
@@ -140,7 +140,7 @@ app.post("/api/proxy",async(req,res)=>{
  }catch(e){return res.status(400).json({error:"Invalid API URL/path: "+e.message})}
  const verb=String(method).toUpperCase(),bodyText=["GET","HEAD"].includes(verb)?"":JSON.stringify(payload??{});
  const timestamp=String(Math.floor(Date.now()/1000)),nonce=crypto.randomUUID().replaceAll("-","");
- const canonical=[verb,target.pathname,timestamp,nonce,crypto.createHash("sha256").update(bodyText).digest("hex")].join("\\n");
+ const canonical=[verb,target.pathname,timestamp,nonce,crypto.createHash("sha256").update(bodyText).digest("hex")].join("\n");
  const signature=crypto.createHmac("sha256",operatorSecret).update(canonical).digest("hex");
  const headers={"Accept":"application/json","X-Operator-Key":operatorKey,"X-1Q-Timestamp":timestamp,"X-1Q-Nonce":nonce,"X-1Q-Signature":signature};
  const isLaunch=verb==="POST" && target.pathname.replace(/\/+$/, "")==="/api/v1/launches";
