@@ -6,6 +6,8 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MAX_EVENTS = Math.max(1, Number(process.env.MAX_CALLBACK_EVENTS || 500));
 const CONFIG_FILE = path.join(__dirname, "data", "callback-config.json");
+// Backward-compatible fallback for the original single-secret deployment configuration.
+const LEGACY_CALLBACK_SECRET = process.env.CALLBACK_SECRET || "";
 const API_BASE_URL = String(process.env.API_BASE_URL || "https://api.1q.gg").replace(/\/+$/, "");
 const events = [];
 const wallets = new Map();
@@ -79,7 +81,7 @@ function persistCallbackConfigs() {
   fs.renameSync(temp, CONFIG_FILE);
 }
 function verifyCallback(req, operatorKey) {
-  const secret = callbackConfigs.get(operatorKey);
+  const secret = callbackConfigs.get(operatorKey) || LEGACY_CALLBACK_SECRET;
   if (!secret) return { ok: false, status: 503, code: "CALLBACK_NOT_CONFIGURED", message: "Callback não configurado para esta Operator Key." };
   const timestamp = String(req.get("X-1Q-Timestamp") || "");
   const nonce = String(req.get("X-1Q-Nonce") || "");
@@ -107,7 +109,7 @@ app.get("/api/callbacks", (req, res) => {
   const key = operatorFrom(req);
   if (!key) return res.status(400).json({ error: "Informe X-Operator-Key." });
   const own = events.filter(e => e.operatorKey === key);
-  res.json({ data: own.map(({ operatorKey, ...e }) => e), configured: callbackConfigs.has(key), endpoint: "/callbacks/1q",
+  res.json({ data: own.map(({ operatorKey, ...e }) => e), configured: callbackConfigs.has(key) || Boolean(LEGACY_CALLBACK_SECRET), endpoint: "/callbacks/1q",
     wallets: [...wallets.keys()].filter(k => k.startsWith(key + ":")).length });
 });
 app.post("/api/callback-config", (req, res) => {
@@ -139,6 +141,7 @@ app.delete("/api/callbacks", (req, res) => {
   res.json({ ok: true });
 });
 app.post("/callbacks/1q", (req, res) => {
+  // X-1Q-Key is the 1Q callback identity; use it unchanged to select a per-operator secret.
   const operatorKey = String(req.get("X-1Q-Key") || "").trim();
   if (!operatorKey) return errorResponse(req, res, "unknown", 401, "MISSING_OPERATOR_KEY", "Cabeçalho X-1Q-Key ausente.");
   const verified = verifyCallback(req, operatorKey);
