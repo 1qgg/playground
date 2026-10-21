@@ -121,7 +121,7 @@ app.post("/api/callback-config", (req, res) => {
   const currentSecret = String(req.body?.currentSecret || "");
   if (!operatorKey || operatorKey.length > 256) return res.status(422).json({ error: "Operator Key inválida." });
   if (secret.length < 16 || secret.length > 4096) return res.status(422).json({ error: "O Callback Secret precisa ter entre 16 e 4096 caracteres." });
-  if (callbackConfigs.has(operatorKey) && currentSecret !== callbackConfigs.get(operatorKey) && currentSecret !== callbackConfigs.get(operatorKey))
+  if (callbackConfigs.has(operatorKey) && currentSecret !== callbackConfigs.get(operatorKey))
     return res.status(403).json({ error: "O Callback Secret já está configurado para esta Operator Key." });
   try {
     callbackConfigs.set(operatorKey, secret);
