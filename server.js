@@ -35,7 +35,7 @@ app.post("/api/proxy",async(req,res)=>{
  const timestamp=String(Math.floor(Date.now()/1000)),nonce=crypto.randomUUID().replaceAll("-","");
  const canonical=[verb,target.pathname,timestamp,nonce,crypto.createHash("sha256").update(bodyText).digest("hex")].join("\n");
  const signature=crypto.createHmac("sha256",operatorSecret).update(canonical).digest("hex");
- const headers={"Accept":"application/json","X-1Q-Operator-Key":operatorKey,"X-1Q-Timestamp":timestamp,"X-1Q-Nonce":nonce,"X-1Q-Signature":signature};
+ const headers={"Accept":"application/json","X-Operator-Key":operatorKey,"X-1Q-Timestamp":timestamp,"X-1Q-Nonce":nonce,"X-1Q-Signature":signature};
  if(bodyText)headers["Content-Type"]="application/json";
  try{
   const upstream=await fetch(target,{method:verb,headers,body:bodyText||undefined,signal:AbortSignal.timeout(30000)});
