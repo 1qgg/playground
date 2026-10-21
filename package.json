@@ -1,8 +1,8 @@
 {
-  "name": "quest-game-playground",
+  "name": "game-playground",
   "version": "1.0.0",
   "private": true,
-  "description": "Browser playground for the 1Q API and game callback testing",
+  "description": "Public browser playground for the 1Q API, game launches and financial callbacks",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
