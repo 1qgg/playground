@@ -21,7 +21,7 @@ function sortDeep(value) {
  if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(k=>[k,sortDeep(value[k])]));
  return value;
 }
-function canonicalJson(value) { return JSON.stringify(sortDeep(value)).replace(/[^\\x00-\\x7F]/g, ch => "\\\\u"+ch.charCodeAt(0).toString(16).padStart(4,"0")); }
+function canonicalJson(value) { return JSON.stringify(sortDeep(value)); }
 function safeHeaders(headers) {
  const blocked = new Set(["authorization","cookie","set-cookie","x-1q-signature"]);
  return Object.fromEntries(Object.entries(headers).filter(([k])=>!blocked.has(k.toLowerCase())));
