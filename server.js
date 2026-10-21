@@ -1,10 +1,13 @@
 const express = require("express");
 const crypto = require("crypto");
+const fs = require("fs");
 const path = require("path");
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MAX_EVENTS = Math.max(1, Number(process.env.MAX_CALLBACK_EVENTS || 500));
-const CALLBACK_SECRET = process.env.CALLBACK_SECRET || "";
+const CALLBACK_CONFIG_FILE = path.join(__dirname, "data", "callback-config.json");
+let CALLBACK_SECRET = process.env.CALLBACK_SECRET || "";
+if (!CALLBACK_SECRET) { try { CALLBACK_SECRET = String(JSON.parse(fs.readFileSync(CALLBACK_CONFIG_FILE, "utf8")).secret || ""); } catch {} }
 const DEFAULT_BALANCE = process.env.CALLBACK_DEFAULT_BALANCE || "100.0000";
 const events = [];
 const wallets = new Map();
@@ -80,6 +83,13 @@ function verifyCallback(req) {
 }
 app.get("/health",(req,res)=>res.json({ok:true,service:"quest-game-playground",financialCallback:{configured:Boolean(CALLBACK_SECRET),endpoint:"/callbacks/1q",mode:"in-memory-demo-wallet"}}));
 app.get("/api/callbacks",(req,res)=>res.json({data:events,configured:Boolean(CALLBACK_SECRET),endpoint:"/callbacks/1q",wallets:wallets.size}));
+app.post("/api/callback-config",(req,res)=>{
+ const secret=String(req.body?.secret||"");
+ if(secret.length<16||secret.length>4096) return res.status(422).json({error:"O segredo precisa ter entre 16 e 4096 caracteres."});
+ if(CALLBACK_SECRET && req.body?.currentSecret !== CALLBACK_SECRET) return res.status(403).json({error:"Informe o segredo atual para alterar a configuração."});
+ try { fs.mkdirSync(path.dirname(CALLBACK_CONFIG_FILE),{recursive:true}); fs.writeFileSync(CALLBACK_CONFIG_FILE,JSON.stringify({secret,updatedAt:new Date().toISOString()}),{mode:0o600}); CALLBACK_SECRET=secret; return res.json({ok:true,configured:true}); }
+ catch(e) { return res.status(500).json({error:"Não foi possível salvar a configuração no servidor."}); }
+});
 app.delete("/api/callbacks",(req,res)=>{events.length=0;res.json({ok:true})});
 app.post("/callbacks/1q",(req,res)=>{
  const verified=verifyCallback(req);
