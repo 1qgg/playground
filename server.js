@@ -10,6 +10,7 @@ const DEFAULT_BALANCE = process.env.CALLBACK_DEFAULT_BALANCE || "100.0000";
 const events = [];
 const wallets = new Map();
 const idempotency = new Map();
+const callbackNonces = new Map();
 
 app.disable("x-powered-by");
 app.use(express.json({limit:"1mb", verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}));
@@ -20,7 +21,7 @@ function sortDeep(value) {
  if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(k=>[k,sortDeep(value[k])]));
  return value;
 }
-function canonicalJson(value) { return JSON.stringify(sortDeep(value)); }
+function canonicalJson(value) { return JSON.stringify(sortDeep(value)).replace(/[^\\x00-\\x7F]/g, ch => "\\\\u"+ch.charCodeAt(0).toString(16).padStart(4,"0")); }
 function safeHeaders(headers) {
  const blocked = new Set(["authorization","cookie","set-cookie","x-1q-signature"]);
  return Object.fromEntries(Object.entries(headers).filter(([k])=>!blocked.has(k.toLowerCase())));
@@ -72,6 +73,11 @@ function verifyCallback(req) {
  const expected=crypto.createHmac("sha256",CALLBACK_SECRET).update(canonical).digest("hex");
  if(!crypto.timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(signature.toLowerCase(),"hex")))
   return {ok:false,status:401,code:"INVALID_CALLBACK_SIGNATURE",message:"Assinatura HMAC do callback inválida."};
+ const now=Date.now();
+ for(const [seen,expires] of callbackNonces) if(expires<=now)callbackNonces.delete(seen);
+ const nonceKey=key+":"+nonce;
+ if(callbackNonces.has(nonceKey)) return {ok:false,status:409,code:"CALLBACK_NONCE_REPLAY",message:"Nonce já utilizado; cada tentativa precisa de uma assinatura nova."};
+ callbackNonces.set(nonceKey,now+300000);
  return {ok:true,nonce,idem};
 }
 app.get("/health",(req,res)=>res.json({ok:true,service:"quest-game-playground",financialCallback:{configured:Boolean(CALLBACK_KEY&&CALLBACK_SECRET),endpoint:"/callbacks/1q",mode:"in-memory-demo-wallet"}}));
