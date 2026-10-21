@@ -125,12 +125,22 @@ app.post("/api/callback-config", (req, res) => {
   if (secret.length < 16 || secret.length > 4096) return res.status(422).json({ error: "O Callback Secret precisa ter entre 16 e 4096 caracteres." });
   if (callbackConfigs.has(operatorKey) && currentSecret !== callbackConfigs.get(operatorKey))
     return res.status(403).json({ error: "O Callback Secret já está configurado para esta Operator Key." });
+  const apiOperatorKey = String(req.body?.apiOperatorKey || "").trim();
+  const previousCallbackSecret = callbackConfigs.get(operatorKey);
+  if (previousCallbackSecret && currentSecret !== previousCallbackSecret)
+    return res.status(403).json({ error: "O Callback Secret já está configurado para esta Callback Key." });
+  const previousApiSecret = apiOperatorKey ? callbackConfigs.get(apiOperatorKey) : undefined;
+  if (previousApiSecret && previousApiSecret !== secret && currentSecret !== previousApiSecret)
+    return res.status(409).json({ error: "Já existe um segredo diferente associado à Operator Key antiga. Informe o segredo atual para migrar a configuração." });
+  const before = new Map(callbackConfigs);
   try {
     callbackConfigs.set(operatorKey, secret);
+    // Keep compatibility with deployments whose 1Q callback identity is the Operator Key.
+    if (apiOperatorKey) callbackConfigs.set(apiOperatorKey, secret);
     persistCallbackConfigs();
-    return res.json({ ok: true, configured: true });
+    return res.json({ ok: true, configured: true, identities: apiOperatorKey && apiOperatorKey !== operatorKey ? 2 : 1 });
   } catch {
-    callbackConfigs.delete(operatorKey);
+    callbackConfigs = before;
     return res.status(500).json({ error: "Não foi possível salvar a configuração do callback." });
   }
 });
@@ -147,8 +157,9 @@ app.post("/callbacks/1q", (req, res) => {
   const verified = verifyCallback(req, operatorKey);
   if (!verified.ok) return errorResponse(req, res, operatorKey, verified.status, verified.code, verified.message);
   const payload = req.body || {};
-  const rawType = String(payload.type || payload.transaction?.type || "").toUpperCase().replace(/[\s_-]/g, "");
-  const type = rawType === "WINBET" ? "WINBET" : rawType;
+  const rawType = String(payload.type || payload.operation || payload.transaction?.type || payload.transaction?.operation || "").toUpperCase().replace(/[\s_-]/g, "");
+  const typeAliases = { WINBET: "WINBET", WIN_BET: "WINBET", BALANCE_CHECK: "BALANCE", GET_BALANCE: "BALANCE", DEBIT: "BET", CREDIT: "WIN" };
+  const type = typeAliases[rawType] || rawType;
   const user = String(payload.user_code || "");
   const transaction = payload.transaction && typeof payload.transaction === "object" ? payload.transaction : {};
   const slot = payload.slot && typeof payload.slot === "object" ? payload.slot : {};
