@@ -85,7 +85,7 @@ app.get("/health",(req,res)=>res.json({ok:true,service:"quest-game-playground",f
 app.get("/api/callbacks",(req,res)=>res.json({data:events,configured:Boolean(CALLBACK_SECRET),endpoint:"/callbacks/1q",wallets:wallets.size}));
 app.post("/api/callback-config",(req,res)=>{
  const origin=req.get("Origin");
- if(origin){try{if(new URL(origin).origin!==`${req.protocol}://${req.get("host")}`)return res.status(403).json({error:"Origem da solicitação inválida."});}catch{return res.status(403).json({error:"Origem da solicitação inválida."});}}
+ if(origin){try{if(new URL(origin).host!==req.get("host"))return res.status(403).json({error:"Origem da solicitação inválida."});}catch{return res.status(403).json({error:"Origem da solicitação inválida."});}}
  const secret=String(req.body?.secret||"");
  if(secret.length<16||secret.length>4096) return res.status(422).json({error:"O segredo precisa ter entre 16 e 4096 caracteres."});
  if(CALLBACK_SECRET && req.body?.currentSecret !== CALLBACK_SECRET) return res.status(403).json({error:"Informe o segredo atual para alterar a configuração."});
