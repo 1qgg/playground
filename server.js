@@ -85,7 +85,8 @@ app.post("/callbacks/1q",(req,res)=>{
  const verified=verifyCallback(req);
  if(!verified.ok) return errorResponse(req,res,verified.status,verified.code,verified.message);
  const payload=req.body||{};
- const type=String(payload.type||"").toUpperCase();
+ const rawType=String(payload.type||payload.transaction?.type||"").toUpperCase().replace(/[\\s_-]/g,"");
+ const type=rawType==="WINBET"?"WINBET":rawType;
  const user=String(payload.user_code||"");
  const transaction=payload.transaction&&typeof payload.transaction==="object"?payload.transaction:{};
  const slot=payload.slot&&typeof payload.slot==="object"?payload.slot:{};
