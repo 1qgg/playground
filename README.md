@@ -15,16 +15,14 @@ Painel independente para testar a 1Q API, iniciar jogos e registrar callbacks HT
 - Interface web para consultar `GET /api/v1/games`.
 - Tentativa de lançamento por `POST /api/v1/launches`.
 - Assinatura HMAC-SHA256 gerada no backend para não expor o segredo no JavaScript.
-- Receptor de diagnóstico em `/callbacks` e `/callbacks/:provider`.
-- Histórico dos callbacks disponível pela interface.
+- Receptor financeiro de demonstração em `POST /callbacks/1q`, com validação HMAC e histórico na interface.
 - Endpoint de saúde `/health`.
 
 ## Atenção
 
-- O receptor de callbacks é **genérico para diagnóstico**: responde HTTP 200 e guarda método, cabeçalhos filtrados e payload em memória. Não implementa lógica de carteira, apostas, ganhos, estornos, validação de assinatura específica do provedor ou idempotência.
-- Os eventos ficam em memória e são apagados ao reiniciar o container.
-- O formato canônico HMAC e os nomes exatos dos cabeçalhos devem ser conferidos com o middleware/contrato atual da 1Q API antes de considerar os testes conclusivos.
+- O receptor `/callbacks/1q` valida a assinatura HMAC usando `CALLBACK_SECRET` e implementa uma carteira demonstrativa em memória para testes. Não use para dinheiro real; carteira, idempotência e histórico não são persistentes.
+- A 1Q envia `X-1Q-Key` automaticamente. Não configure `CALLBACK_KEY`; a assinatura é validada com o segredo de callback, não com o Operator Secret da API.
+- O contrato oficial do callback está em [`docs/OPERATOR-INTEGRATION.md`](https://github.com/1qgg/1q/blob/release/oneq-production-commercial-ac5aca9/docs/OPERATOR-INTEGRATION.md), seção Financial callback configuration.
 - Os nomes dos parâmetros de catálogo e lançamento podem precisar de ajuste ao contrato atual da API. Examine a resposta JSON no painel para depurar.
 - Mantenha o playground privado ou atrás de autenticação no proxy/SSO do Coolify. O backend assina chamadas usando as credenciais fornecidas pelo browser, então não exponha o serviço publicamente sem proteção.
-- Se `CALLBACK_TOKEN` estiver configurado, os emissores devem enviar o cabeçalho `X-Callback-Token` com o mesmo valor.
 - O projeto não altera nem implanta a API principal.
