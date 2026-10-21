@@ -43,7 +43,7 @@ app.post("/api/proxy",async(req,res)=>{
  try{
   const upstream=await fetch(target,{method:verb,headers,body:bodyText||undefined,signal:AbortSignal.timeout(30000)});
   const raw=await upstream.text();let data;try{data=JSON.parse(raw)}catch{data=raw}
-  res.status(200).json({upstreamStatus:upstream.status,url:target.toString(),...(isLaunch?{idempotencyKey}:{}),data});
+  res.status(upstream.status).json({upstreamStatus:upstream.status,url:target.toString(),...(isLaunch?{idempotencyKey}:{}),data});
  }catch(e){res.status(502).json({error:"API request failed",detail:e.message})}
 });
 app.listen(PORT,"0.0.0.0",()=>console.log(`Quest Game Playground listening on ${PORT}`));
