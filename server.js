@@ -4,7 +4,6 @@ const path = require("path");
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MAX_EVENTS = Math.max(1, Number(process.env.MAX_CALLBACK_EVENTS || 500));
-const CALLBACK_KEY = (process.env.CALLBACK_KEY || "").trim();
 const CALLBACK_SECRET = process.env.CALLBACK_SECRET || "";
 const DEFAULT_BALANCE = process.env.CALLBACK_DEFAULT_BALANCE || "100.0000";
 const events = [];
@@ -57,14 +56,13 @@ function errorResponse(req,res,status,code,message,body=req.body) {
  return res.status(status).json({accepted:false,status:"rejected",error_code:code,message});
 }
 function verifyCallback(req) {
- if(!CALLBACK_SECRET || !CALLBACK_KEY) return {ok:false,status:503,code:"CALLBACK_NOT_CONFIGURED",message:"Configure CALLBACK_KEY e CALLBACK_SECRET nas variáveis do serviço."};
+ if(!CALLBACK_SECRET) return {ok:false,status:503,code:"CALLBACK_NOT_CONFIGURED",message:"Configure CALLBACK_SECRET com o segredo de assinatura do callback financeiro da 1Q."};
  const key=String(req.get("X-1Q-Key")||"");
  const timestamp=String(req.get("X-1Q-Timestamp")||"");
  const nonce=String(req.get("X-1Q-Nonce")||"");
  const idem=String(req.get("X-1Q-Idempotency-Key")||"");
  const signature=String(req.get("X-1Q-Signature")||"");
- if(key!==CALLBACK_KEY) return {ok:false,status:401,code:"INVALID_CALLBACK_KEY",message:"X-1Q-Key não corresponde ao projeto configurado."};
- if(!/^\d{10,13}$/.test(timestamp)||!nonce||nonce.length>128||!idem||idem.length>128||! /^[a-f0-9]{64}$/i.test(signature))
+ if(!key||!/^\d{10,13}$/.test(timestamp)||!nonce||nonce.length>128||!idem||idem.length>128||! /^[a-f0-9]{64}$/i.test(signature))
   return {ok:false,status:401,code:"INVALID_CALLBACK_HEADERS",message:"Cabeçalhos de assinatura ou idempotência ausentes/inválidos."};
  const seconds=Number(timestamp.length>10?Math.floor(Number(timestamp)/1000):Number(timestamp));
  if(!Number.isFinite(seconds)||Math.abs(Math.floor(Date.now()/1000)-seconds)>300)
@@ -80,8 +78,8 @@ function verifyCallback(req) {
  callbackNonces.set(nonceKey,now+300000);
  return {ok:true,nonce,idem};
 }
-app.get("/health",(req,res)=>res.json({ok:true,service:"quest-game-playground",financialCallback:{configured:Boolean(CALLBACK_KEY&&CALLBACK_SECRET),endpoint:"/callbacks/1q",mode:"in-memory-demo-wallet"}}));
-app.get("/api/callbacks",(req,res)=>res.json({data:events,configured:Boolean(CALLBACK_KEY&&CALLBACK_SECRET),endpoint:"/callbacks/1q",wallets:wallets.size}));
+app.get("/health",(req,res)=>res.json({ok:true,service:"quest-game-playground",financialCallback:{configured:Boolean(CALLBACK_SECRET),endpoint:"/callbacks/1q",mode:"in-memory-demo-wallet"}}));
+app.get("/api/callbacks",(req,res)=>res.json({data:events,configured:Boolean(CALLBACK_SECRET),endpoint:"/callbacks/1q",wallets:wallets.size}));
 app.delete("/api/callbacks",(req,res)=>{events.length=0;res.json({ok:true})});
 app.post("/callbacks/1q",(req,res)=>{
  const verified=verifyCallback(req);
